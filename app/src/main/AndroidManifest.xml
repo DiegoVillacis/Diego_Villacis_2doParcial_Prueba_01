@@ -10,6 +10,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Diego_Villacis_2doParcial_Prueba_01">
         <activity
+            android:name=".VFDI_Usuario"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
