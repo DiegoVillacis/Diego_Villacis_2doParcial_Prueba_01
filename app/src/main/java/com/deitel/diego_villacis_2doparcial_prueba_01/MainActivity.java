@@ -1,109 +1,92 @@
 package com.deitel.diego_villacis_2doparcial_prueba_01;
 
-import androidx.annotation.NonNull;
+import android.net.Uri;
+import android.os.Bundle;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
-
-public class MainActivity extends AppCompatActivity {
-
-    private DatabaseReference mRootReference;
-    private Button mBotonSubirDatos;
-    private  Button buttonLogin;
-    private EditText editTextDatosUsuarios;
-    private  EditText editTextMail,editTextPassword;
-    private static final String TAG = "EmailPassword";
-
-    private FirebaseAuth mAuth;
-    private FirebaseAuth.AuthStateListener mAuthStateListener;
-
+public class MainActivity extends AppCompatActivity
+        implements ContactsFragment.ContactsFragmentListener,
+        DetailFragment.DetailFragmentListener,
+        AddEditFragment.AddEditFragmentListener
+{
+    public static final String CONTACT_URI = "contact_uri";
+    private ContactsFragment contactsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mRootReference = FirebaseDatabase.getInstance().getReference();
-
-        mAuth = FirebaseAuth.getInstance();
-
-        //mBotonSelect = findViewById(R.id.button_Select);
-        // editTextDatosUsuarios= findViewById(R.id.edtiText_Datos);
-        editTextMail = findViewById(R.id.editTextTextEmailAddress);
-        editTextPassword = findViewById(R.id.editTextTextPassword);
-
-        buttonLogin = findViewById(R.id.buttonLogin);
-
-        mAuthStateListener  = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-
-                if (firebaseAuth.getCurrentUser() != null) {
-                    Intent intent = new Intent(MainActivity.this,HomeMainActivity.class);
-                    intent.putExtra("mail",editTextMail.getText().toString());
-                    startActivity(intent);
-
-                } else
-                {
-                    Toast.makeText(MainActivity.this, "Datos incorrectos", Toast.LENGTH_SHORT).show();
-                }
-            }
-        };
-        buttonLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-
-                signIn();
-            }
-        });
-
+        if (!(savedInstanceState == null && findViewById(R.id.fragmentContainer) == null)) {
+            contactsFragment = new ContactsFragment();
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            transaction.add(R.id.fragmentContainer, contactsFragment);
+            transaction.commit();
+        } else {
+            contactsFragment = (ContactsFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.contactsFragment);
+        }
     }
-
-
     @Override
-    public void onStart() {
-        super.onStart();
-        // Check if user is signed in (non-null) and update UI accordingly.
-
-        mAuth.addAuthStateListener(mAuthStateListener);
+    public void onContactSelected(Uri contactUri){
+        if(findViewById(R.id.fragmentContainer) != null){
+            displayContact(contactUri, R.id.fragmentContainer);
+        } else {
+            getSupportFragmentManager().popBackStack();
+            displayContact(contactUri, R.id.rightPaneContainer);
+        }
     }
-
-
-    private void signIn() {
-        String email= editTextMail.getText().toString();
-        String password = editTextPassword.getText().toString();
-
-        // [START sign_in_with_email]
-        mAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d(TAG, "signInWithEmail:success");
-                            FirebaseUser user = mAuth.getCurrentUser();
-
-                            //updateUI(user);
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w(TAG, "signInWithEmail:failure", task.getException());
-                            Toast.makeText(MainActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                            //updateUI(null);
-                        }
-                    }
-                });
-        // [END sign_in_with_email]
+    @Override
+    public void onAddContact(){
+        if(findViewById(R.id.fragmentContainer) != null){
+            displayAddEditFragment(R.id.fragmentContainer, null);
+        } else {
+            displayAddEditFragment(R.id.rightPaneContainer, null);
+        }
     }
-
-
-
-
+    private void displayContact(Uri contactUri, int viewID){
+        DetailFragment detailFragment = new DetailFragment();
+        Bundle arguments = new Bundle();
+        arguments.putParcelable(CONTACT_URI, contactUri);
+        detailFragment.setArguments(arguments);
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(viewID, detailFragment);
+        transaction.addToBackStack(null);
+        transaction.commit();
+    }
+    private void displayAddEditFragment(int viewID, Uri contactUri){
+        AddEditFragment addEditFragment = new AddEditFragment();
+        if(contactUri != null){
+            Bundle arguments = new Bundle();
+            arguments.putParcelable(CONTACT_URI, contactUri);
+            addEditFragment.setArguments(arguments);
+        }
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(viewID, addEditFragment);
+        transaction.addToBackStack(null);
+        transaction.commit();
+    }
+    @Override
+    public void onContactDeleted(){
+        getSupportFragmentManager().popBackStack();
+        contactsFragment.updateContactList();
+    }
+    @Override
+    public void onEditContact(Uri contactUri){
+        if(findViewById(R.id.fragmentContainer) != null){
+            displayAddEditFragment(R.id.fragmentContainer, contactUri);
+        } else {
+            displayAddEditFragment(R.id.rightPaneContainer, contactUri);
+        }
+    }
+    @Override
+    public void onAddEditCompleted(Uri contactUri){
+        getSupportFragmentManager().popBackStack();
+        contactsFragment.updateContactList();
+        if(findViewById(R.id.fragmentContainer) == null){
+            getSupportFragmentManager().popBackStack();
+            displayContact(contactUri, R.id.rightPaneContainer);
+        }
+    }
 }
